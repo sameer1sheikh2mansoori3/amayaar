@@ -23,9 +23,10 @@ export async function POST(req: Request) {
 
     const stream = OpenAIStream(response);
 
-
+    console.log(`no need `, stream)
     return new StreamingTextResponse(stream);
   } catch (error) {
+    console.log(`error is `, error)
     if (error instanceof OpenAI.APIError) {
       // OpenAI API error handling
       const { name, status, headers, message } = error;

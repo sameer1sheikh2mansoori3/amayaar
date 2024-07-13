@@ -27,17 +27,17 @@ import { messageSchema } from '@/schemas/messageSchema';
 
 const specialChar = '||';
 
-const parseStringMessages = (messageString: string): string[] => {
-  return messageString.split(specialChar);
+const parseStringMessages = (suggestMessage: string): string[] => {
+  return suggestMessage.split(specialChar);
 };
 
 const initialMessageString =
-  "What's your favorite movie?||Do you have any pets?||What's your dream job?";
+  "What's your favorite movie1?||Do you have any pets2?||What's your dream job3?";
 
 export default function SendMessage() {
   const params = useParams<{ username: string }>();
   const username = params.username;
-
+  const [suggestMessage, setSuggestMessage] = useState<string>(initialMessageString)
   const {
     complete,
     completion,
@@ -86,9 +86,54 @@ export default function SendMessage() {
     }
   };
 
+  const API_KEY = process.env.GEMINI_AI; // Replace with your actual API key
+
+  const data = {
+    contents: [
+      {
+        role: "user",
+        parts: [
+          { text: "Give me three message ask to a friend which is user friendly and seprate them by || egWhat's your favorite movie1?||Do you have any pets2?||What's your dream job3?" }
+        ]
+      }
+    ]
+  };
+
+  const headers = {
+    'Content-Type': 'application/json',
+    'x-goog-api-key': API_KEY
+  };
+  const fetchData = async () => {
+   
+   
+  }
+  const url = 'https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent';
   const fetchSuggestedMessages = async () => {
     try {
-      complete('');
+
+      const response = await axios({
+        url: "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=AIzaSyA1erfPTDN9HFYw-ddFLhsLv_JYs74kVQo",
+        method: "post",
+        data: {
+          contents: [
+            {
+              parts: [
+                {
+                  text: "suggest me three messages to ask to a frined sepatae them by ||, eg: mesaage1 || message2 || message3",
+                },
+              ],
+            },
+          ],
+        },
+      });
+      // console.log(response.data.candidates[0].content?.parts[0].text);
+      const arr = response.data.candidates[0].content?.parts[0]?.text
+      
+      setSuggestMessage(arr.split("||"));
+      console.log(arr.split("||"))
+      
+      
+
     } catch (error) {
       console.error('Error fetching messages:', error);
       // Handle error appropriately
@@ -96,8 +141,8 @@ export default function SendMessage() {
   };
 
   return (
-    <div className="container mx-auto my-8 p-6 bg-white rounded max-w-4xl">
-      <h1 className="text-4xl font-bold mb-6 text-center">
+    <div className="container max-w-4xl p-6 mx-auto my-8 bg-white rounded">
+      <h1 className="mb-6 text-4xl font-bold text-center">
         Public Profile Link
       </h1>
       <Form {...form}>
@@ -122,7 +167,7 @@ export default function SendMessage() {
           <div className="flex justify-center">
             {isLoading ? (
               <Button disabled>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 Please wait
               </Button>
             ) : (
@@ -134,12 +179,12 @@ export default function SendMessage() {
         </form>
       </Form>
 
-      <div className="space-y-4 my-8">
+      <div className="my-8 space-y-4">
         <div className="space-y-2">
           <Button
             onClick={fetchSuggestedMessages}
             className="my-4"
-            disabled={isSuggestLoading}
+          disabled={isSuggestLoading}
           >
             Suggest Messages
           </Button>
@@ -153,7 +198,7 @@ export default function SendMessage() {
             {error ? (
               <p className="text-red-500">{error.message}</p>
             ) : (
-              parseStringMessages(completion).map((message, index) => (
+              suggestMessage.map((message, index) => (
                 <Button
                   key={index}
                   variant="outline"

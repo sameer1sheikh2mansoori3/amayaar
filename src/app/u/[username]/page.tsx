@@ -8,7 +8,6 @@ import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { CardHeader, CardContent, Card } from '@/components/ui/card';
-import { useCompletion } from 'ai/react';
 import {
   Form,
   FormControl,
@@ -25,28 +24,17 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { messageSchema } from '@/schemas/messageSchema';
 
-const specialChar = '||';
-
-const parseStringMessages = (suggestMessage: string): string[] => {
-  return suggestMessage.split(specialChar);
-};
-
-const initialMessageString =
-  "What's your favorite movie1?||Do you have any pets2?||What's your dream job3?";
+const initialMessages = [
+  "What's your favorite movie1?",
+  "Do you have any pets2?",
+  "What's your dream job3?"
+];
 
 export default function SendMessage() {
   const params = useParams<{ username: string }>();
   const username = params.username;
-  const [suggestMessage, setSuggestMessage] = useState<string>(initialMessageString)
-  const {
-    complete,
-    completion,
-    isLoading: isSuggestLoading,
-    error,
-  } = useCompletion({
-    api: '/api/suggest-messages',
-    initialCompletion: initialMessageString,
-  });
+  const [suggestMessage, setSuggestMessage] = useState<string[]>(initialMessages);
+  const [isSuggestLoading, setIsSuggestLoading] = useState(false);
 
   const form = useForm<z.infer<typeof messageSchema>>({
     resolver: zodResolver(messageSchema),
@@ -78,7 +66,7 @@ export default function SendMessage() {
       toast({
         title: 'Error',
         description:
-          axiosError.response?.data.message ?? 'Failed to sent message',
+          axiosError.response?.data.message ?? 'Failed to send message',
         variant: 'destructive',
       });
     } finally {
@@ -86,31 +74,9 @@ export default function SendMessage() {
     }
   };
 
-  const API_KEY = process.env.GEMINI_AI; // Replace with your actual API key
-
-  const data = {
-    contents: [
-      {
-        role: "user",
-        parts: [
-          { text: "Give me three message ask to a friend which is user friendly and seprate them by || egWhat's your favorite movie1?||Do you have any pets2?||What's your dream job3?" }
-        ]
-      }
-    ]
-  };
-
-  const headers = {
-    'Content-Type': 'application/json',
-    'x-goog-api-key': API_KEY
-  };
-  const fetchData = async () => {
-   
-   
-  }
-  const url = 'https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent';
   const fetchSuggestedMessages = async () => {
+    setIsSuggestLoading(true);
     try {
-
       const response = await axios({
         url: "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=AIzaSyA1erfPTDN9HFYw-ddFLhsLv_JYs74kVQo",
         method: "post",
@@ -119,24 +85,21 @@ export default function SendMessage() {
             {
               parts: [
                 {
-                  text: "suggest me three messages to ask to a frined sepatae them by ||, eg: mesaage1 || message2 || message3",
+                  text: "suggest me three messages to ask to a friend, separate them by ||, e.g., message1 || message2 || message3",
                 },
               ],
             },
           ],
         },
       });
-      // console.log(response.data.candidates[0].content?.parts[0].text);
-      const arr = response.data.candidates[0].content?.parts[0]?.text
-      
-      setSuggestMessage(arr.split("||"));
-      console.log(arr.split("||"))
-      
-      
 
+      const arr = response.data.candidates[0].content?.parts[0]?.text.split("||");
+      setSuggestMessage(arr || []);
     } catch (error) {
       console.error('Error fetching messages:', error);
       // Handle error appropriately
+    } finally {
+      setIsSuggestLoading(false);
     }
   };
 
@@ -184,9 +147,13 @@ export default function SendMessage() {
           <Button
             onClick={fetchSuggestedMessages}
             className="my-4"
-          disabled={isSuggestLoading}
+            disabled={isSuggestLoading}
           >
-            Suggest Messages
+            {isSuggestLoading ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              'Suggest Messages'
+            )}
           </Button>
           <p>Click on any message below to select it.</p>
         </div>
@@ -195,9 +162,7 @@ export default function SendMessage() {
             <h3 className="text-xl font-semibold">Messages</h3>
           </CardHeader>
           <CardContent className="flex flex-col space-y-4">
-            {error ? (
-              <p className="text-red-500">{error.message}</p>
-            ) : (
+            {Array.isArray(suggestMessage) ? (
               suggestMessage.map((message, index) => (
                 <Button
                   key={index}
@@ -208,6 +173,8 @@ export default function SendMessage() {
                   {message}
                 </Button>
               ))
+            ) : (
+              <p className="text-red-500">No messages available</p>
             )}
           </CardContent>
         </Card>
